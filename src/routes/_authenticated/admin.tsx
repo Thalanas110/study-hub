@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import React from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsAdmin } from "@/lib/useIsAdmin";
 import { useAuth } from "@/lib/auth";
@@ -9,6 +10,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
 import { toast } from "sonner";
 import { ShieldCheck, Users, BookOpen, FileText, Brain, MessageSquare, Trash2 } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({ meta: [{ title: "Admin — Studyhive" }] }),
@@ -104,17 +106,17 @@ function AdminPage() {
   ];
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-10">
+    <div className="mx-auto max-w-6xl px-4 py-6 md:px-6 md:py-10">
       <ConfirmDialog {...confirmDialogProps} />
       <div className="flex items-center gap-3">
         <span className="grid h-10 w-10 place-items-center rounded-xl bg-primary text-primary-foreground"><ShieldCheck className="h-5 w-5" /></span>
         <div>
-          <h1 className="font-display text-3xl font-bold">Admin console</h1>
+          <h1 className="font-display text-2xl font-bold md:text-3xl">Admin console</h1>
           <p className="text-sm text-muted-foreground">Full visibility across the study hub.</p>
         </div>
       </div>
 
-      <div className="mt-6 flex flex-wrap gap-2 border-b border-border/60">
+      <div className="mt-6 flex gap-2 overflow-x-auto border-b border-border/60 scrollbar-none">
         {tabs.map((t) => (
           <button key={t.id} onClick={() => setTab(t.id)} className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition ${tab === t.id ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
             {t.label}
@@ -242,6 +244,30 @@ function AdminPage() {
 }
 
 function Table({ headers, children }: { headers: string[]; children: React.ReactNode }) {
+  const isMobile = useIsMobile();
+
+  if (isMobile) {
+    return (
+      <div className="space-y-3">
+        {React.Children.map(children, (child) => {
+          if (!React.isValidElement(child)) return child;
+          const el = child as React.ReactElement<any>;
+          const cells = React.Children.toArray(el.props.children);
+          return (
+            <div className="rounded-2xl border border-border/70 bg-card/70 p-4 space-y-2">
+              {headers.map((h, i) => (
+                <div key={h} className="flex items-start justify-between gap-3">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground shrink-0">{h}</span>
+                  <span className="text-sm text-right">{cells[i] ?? "—"}</span>
+                </div>
+              ))}
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
   return (
     <div className="overflow-x-auto rounded-2xl border border-border/70 bg-card/70">
       <table className="w-full text-left">
