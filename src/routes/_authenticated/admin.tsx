@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
 import { toast } from "sonner";
-import { ShieldCheck, Users, BookOpen, FileText, Brain, MessageSquare, Trash2, LayoutDashboard } from "lucide-react";
+import { ShieldCheck, Users, BookOpen, FileText, Brain, Trash2, LayoutDashboard } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 
@@ -18,7 +18,7 @@ export const Route = createFileRoute("/_authenticated/admin")({
   component: AdminPage,
 });
 
-type Tab = "overview" | "users" | "groups" | "notes" | "quizzes" | "messages";
+type Tab = "overview" | "users" | "groups" | "notes" | "quizzes";
 
 function AdminPage() {
   const { isAdmin, loading } = useIsAdmin();
@@ -109,7 +109,6 @@ function AdminPage() {
     { label: "Groups", value: data.groups?.length ?? 0, icon: BookOpen },
     { label: "Notes", value: data.notes?.length ?? 0, icon: FileText },
     { label: "Quizzes", value: data.quizzes?.length ?? 0, icon: Brain },
-    { label: "Messages", value: data.messages?.length ?? 0, icon: MessageSquare },
     { label: "Attempts", value: data.attempts?.length ?? 0, icon: ShieldCheck },
   ];
 
@@ -119,7 +118,6 @@ function AdminPage() {
     { id: "groups", label: "Groups" },
     { id: "notes", label: "Notes" },
     { id: "quizzes", label: "Quizzes" },
-    { id: "messages", label: "Messages" },
   ];
 
   return (
@@ -145,7 +143,6 @@ function AdminPage() {
               <SelectItem value="groups"><span className="flex items-center gap-2"><BookOpen className="h-4 w-4" /> Groups</span></SelectItem>
               <SelectItem value="notes"><span className="flex items-center gap-2"><FileText className="h-4 w-4" /> Notes</span></SelectItem>
               <SelectItem value="quizzes"><span className="flex items-center gap-2"><Brain className="h-4 w-4" /> Quizzes</span></SelectItem>
-              <SelectItem value="messages"><span className="flex items-center gap-2"><MessageSquare className="h-4 w-4" /> Messages</span></SelectItem>
             </SelectContent>
           </Select>
         ) : (
@@ -257,20 +254,6 @@ function AdminPage() {
                 </tr>
               );
             })}
-          </Table>
-        )}
-
-        {tab === "messages" && (
-          <Table headers={["Group", "Author", "Message", "Sent", ""]}>
-            {data.messages?.map((m: any) => (
-              <tr key={m.id} className="border-t border-border/50">
-                <td className="px-4 py-3 text-sm">{groupName(m.group_id)}</td>
-                <td className="px-4 py-3 text-sm">{nameFor(m.user_id)}</td>
-                <td className="px-4 py-3 max-w-md truncate">{m.content}</td>
-                <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">{new Date(m.created_at).toLocaleString()}</td>
-                <td className="px-4 py-3"><Button size="sm" variant="ghost" onClick={() => del("messages", m.id)}><Trash2 className="h-4 w-4" /></Button></td>
-              </tr>
-            ))}
           </Table>
         )}
       </div>

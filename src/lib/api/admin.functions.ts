@@ -20,7 +20,7 @@ export const getAdminDashboardData = createServerFn({ method: "POST" })
     if (roleError) throw new Error(roleError.message);
     if (!roleRow) throw new Error("Forbidden");
 
-    const [profiles, roles, groups, members, notes, quizzes, questions, attempts, messages] = await Promise.all([
+    const [profiles, roles, groups, members, notes, quizzes, questions, attempts] = await Promise.all([
       supabaseAdmin.from("profiles").select("*").order("created_at", { ascending: false }),
       supabaseAdmin.from("user_roles").select("user_id, role"),
       supabaseAdmin.from("study_groups").select("*").order("created_at", { ascending: false }),
@@ -29,10 +29,9 @@ export const getAdminDashboardData = createServerFn({ method: "POST" })
       supabaseAdmin.from("quizzes").select("*").order("created_at", { ascending: false }),
       supabaseAdmin.from("quiz_questions").select("id, quiz_id"),
       supabaseAdmin.from("quiz_attempts").select("*").order("completed_at", { ascending: false }),
-      supabaseAdmin.from("messages").select("*").order("created_at", { ascending: false }).limit(200),
     ]);
 
-    const firstError = [profiles, roles, groups, members, notes, quizzes, questions, attempts, messages]
+    const firstError = [profiles, roles, groups, members, notes, quizzes, questions, attempts]
       .map((res) => res.error)
       .find(Boolean);
     if (firstError) throw new Error(firstError.message);
@@ -46,7 +45,6 @@ export const getAdminDashboardData = createServerFn({ method: "POST" })
       quizzes: quizzes.data ?? [],
       questions: questions.data ?? [],
       attempts: attempts.data ?? [],
-      messages: messages.data ?? [],
     };
   });
 
