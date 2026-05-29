@@ -5,6 +5,8 @@ import { useIsAdmin } from "@/lib/useIsAdmin";
 import { useAuth } from "@/lib/auth";
 import { getAdminDashboardData } from "@/lib/api/admin.functions";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
 import { toast } from "sonner";
 import { ShieldCheck, Users, BookOpen, FileText, Brain, MessageSquare, Trash2 } from "lucide-react";
 
@@ -22,6 +24,7 @@ function AdminPage() {
   const [tab, setTab] = useState<Tab>("overview");
   const [data, setData] = useState<any>({});
   const [refreshKey, setRefreshKey] = useState(0);
+  const { confirmAsync, confirmDialogProps } = useConfirmDialog();
 
   useEffect(() => { if (!loading && !isAdmin) navigate({ to: "/groups" }); }, [loading, isAdmin, navigate]);
 
@@ -51,28 +54,32 @@ function AdminPage() {
   const isAdminUser = (uid: string) => data.roles?.some((r: any) => r.user_id === uid && r.role === "admin");
 
   const del = async (table: string, id: string) => {
-    if (!confirm("Delete this record?")) return;
+    const ok = await confirmAsync({ title: "Delete record", description: "This action cannot be undone.", actionLabel: "Delete" });
+    if (!ok) return;
     const { error } = await supabase.from(table as any).delete().eq("id", id);
     if (error) toast.error(error.message);
     else { toast.success("Deleted"); setRefreshKey((k) => k + 1); }
   };
 
   const grantAdmin = async (uid: string) => {
-    if (!confirm("Grant admin role to this user?")) return;
+    const ok = await confirmAsync({ title: "Grant admin role", description: "This user will gain access to admin controls.", actionLabel: "Grant admin", variant: "default" });
+    if (!ok) return;
     const { error } = await supabase.from("user_roles").insert({ user_id: uid, role: "admin" });
     if (error) toast.error(error.message);
     else { toast.success("Admin role granted"); setRefreshKey((k) => k + 1); }
   };
 
   const revokeAdmin = async (uid: string) => {
-    if (!confirm("Revoke admin role from this user?")) return;
+    const ok = await confirmAsync({ title: "Remove admin role", description: "This user will lose admin privileges.", actionLabel: "Remove admin", variant: "default" });
+    if (!ok) return;
     const { error } = await supabase.from("user_roles").delete().eq("user_id", uid).eq("role", "admin");
     if (error) toast.error(error.message);
     else { toast.success("Admin role revoked"); setRefreshKey((k) => k + 1); }
   };
 
   const deleteAccount = async (uid: string, label: string) => {
-    if (!confirm(`Delete ${label}'s account? This cannot be undone.`)) return;
+    const ok = await confirmAsync({ title: "Delete account", description: `Delete ${label}'s account? This cannot be undone.`, actionLabel: "Delete account" });
+    if (!ok) return;
     const { error } = await supabase.rpc("admin_delete_user", { target_user_id: uid });
     if (error) toast.error(error.message);
     else { toast.success("Account deleted"); setRefreshKey((k) => k + 1); }
@@ -98,6 +105,7 @@ function AdminPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-10">
+      <ConfirmDialog {...confirmDialogProps} />
       <div className="flex items-center gap-3">
         <span className="grid h-10 w-10 place-items-center rounded-xl bg-primary text-primary-foreground"><ShieldCheck className="h-5 w-5" /></span>
         <div>
