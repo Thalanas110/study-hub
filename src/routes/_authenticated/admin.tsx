@@ -9,8 +9,9 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
 import { toast } from "sonner";
-import { ShieldCheck, Users, BookOpen, FileText, Brain, MessageSquare, Trash2 } from "lucide-react";
+import { ShieldCheck, Users, BookOpen, FileText, Brain, MessageSquare, Trash2, LayoutDashboard } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({ meta: [{ title: "Admin — Studyhive" }] }),
@@ -23,6 +24,7 @@ function AdminPage() {
   const { isAdmin, loading } = useIsAdmin();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [tab, setTab] = useState<Tab>("overview");
   const [data, setData] = useState<any>({});
   const [refreshKey, setRefreshKey] = useState(0);
@@ -116,12 +118,30 @@ function AdminPage() {
         </div>
       </div>
 
-      <div className="mt-6 flex gap-2 overflow-x-auto border-b border-border/60 scrollbar-none">
-        {tabs.map((t) => (
-          <button key={t.id} onClick={() => setTab(t.id)} className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition ${tab === t.id ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
-            {t.label}
-          </button>
-        ))}
+      <div className="mt-6">
+        {isMobile ? (
+          <Select value={tab} onValueChange={(value) => setTab(value as Tab)}>
+            <SelectTrigger className="w-full bg-card/70">
+              <SelectValue placeholder="Select section" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="overview"><span className="flex items-center gap-2"><LayoutDashboard className="h-4 w-4" /> Overview</span></SelectItem>
+              <SelectItem value="users"><span className="flex items-center gap-2"><Users className="h-4 w-4" /> Users</span></SelectItem>
+              <SelectItem value="groups"><span className="flex items-center gap-2"><BookOpen className="h-4 w-4" /> Groups</span></SelectItem>
+              <SelectItem value="notes"><span className="flex items-center gap-2"><FileText className="h-4 w-4" /> Notes</span></SelectItem>
+              <SelectItem value="quizzes"><span className="flex items-center gap-2"><Brain className="h-4 w-4" /> Quizzes</span></SelectItem>
+              <SelectItem value="messages"><span className="flex items-center gap-2"><MessageSquare className="h-4 w-4" /> Messages</span></SelectItem>
+            </SelectContent>
+          </Select>
+        ) : (
+        <div className="flex gap-2 overflow-x-auto border-b border-border/60 scrollbar-none">
+          {tabs.map((t) => (
+            <button key={t.id} onClick={() => setTab(t.id)} className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition ${tab === t.id ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+        )}
       </div>
 
       <div className="mt-6">
