@@ -49,10 +49,10 @@ function LoginPage() {
         </div>
       </div>
 
-      <div className="flex items-center justify-center p-6 md:p-12">
+      <div className="flex items-center justify-center p-4 md:p-12">
         <form onSubmit={submit} className="w-full max-w-sm space-y-5">
           <div>
-            <h1 className="font-display text-3xl font-bold">{mode === "signin" ? "Welcome back" : "Create your account"}</h1>
+            <h1 className="font-display text-2xl font-bold md:text-3xl">{mode === "signin" ? "Welcome back" : "Create your account"}</h1>
             <p className="mt-1 text-sm text-muted-foreground">
               {mode === "signin" ? "Sign in to your study hub." : "Join the hub to host or join groups."}
             </p>

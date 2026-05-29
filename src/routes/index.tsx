@@ -18,12 +18,12 @@ function Landing() {
   return (
     <div className="min-h-screen">
       <Header />
-      <main className="mx-auto max-w-6xl px-6">
+      <main className="mx-auto max-w-6xl px-4 md:px-6">
         <section className="pt-20 pb-24 md:pt-32 md:pb-32">
           <div className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-card/60 px-4 py-1.5 text-xs font-medium text-muted-foreground">
             <Sparkles className="h-3.5 w-3.5 text-primary" /> A calmer place to study together
           </div>
-          <h1 className="mt-6 max-w-3xl text-5xl font-bold tracking-tight md:text-7xl">
+          <h1 className="mt-6 max-w-3xl text-4xl font-bold tracking-tight md:text-7xl">
             Study groups that actually <span className="text-primary">help you learn</span>.
           </h1>
           <p className="mt-6 max-w-2xl text-lg text-muted-foreground">
