@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsAdmin } from "@/lib/useIsAdmin";
 import { useAuth } from "@/lib/auth";
+import { getAdminDashboardData } from "@/lib/api/admin.functions";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { ShieldCheck, Users, BookOpen, FileText, Brain, MessageSquare, Trash2 } from "lucide-react";
@@ -27,28 +28,19 @@ function AdminPage() {
   useEffect(() => {
     if (!isAdmin) return;
     (async () => {
-      const [profiles, roles, groups, members, notes, quizzes, questions, attempts, messages] = await Promise.all([
-        supabase.from("profiles").select("*").order("created_at", { ascending: false }),
-        supabase.from("user_roles").select("user_id, role"),
-        supabase.from("study_groups").select("*").order("created_at", { ascending: false }),
-        supabase.from("group_members").select("*"),
-        supabase.from("notes").select("*").order("created_at", { ascending: false }),
-        supabase.from("quizzes").select("*").order("created_at", { ascending: false }),
-        supabase.from("quiz_questions").select("id, quiz_id"),
-        supabase.from("quiz_attempts").select("*").order("completed_at", { ascending: false }),
-        supabase.from("messages").select("*").order("created_at", { ascending: false }).limit(200),
-      ]);
-      setData({
-        profiles: profiles.data ?? [],
-        roles: roles.data ?? [],
-        groups: groups.data ?? [],
-        members: members.data ?? [],
-        notes: notes.data ?? [],
-        quizzes: quizzes.data ?? [],
-        questions: questions.data ?? [],
-        attempts: attempts.data ?? [],
-        messages: messages.data ?? [],
-      });
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      if (!accessToken) {
+        toast.error("Missing session. Please sign in again.");
+        return;
+      }
+      try {
+        const result = await getAdminDashboardData({ data: { accessToken } });
+        setData(result);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to load admin data";
+        toast.error(message);
+      }
     })();
   }, [isAdmin, refreshKey]);
 
@@ -77,6 +69,13 @@ function AdminPage() {
     const { error } = await supabase.from("user_roles").delete().eq("user_id", uid).eq("role", "admin");
     if (error) toast.error(error.message);
     else { toast.success("Admin role revoked"); setRefreshKey((k) => k + 1); }
+  };
+
+  const deleteAccount = async (uid: string, label: string) => {
+    if (!confirm(`Delete ${label}'s account? This cannot be undone.`)) return;
+    const { error } = await supabase.rpc("admin_delete_user", { target_user_id: uid });
+    if (error) toast.error(error.message);
+    else { toast.success("Account deleted"); setRefreshKey((k) => k + 1); }
   };
 
   const stats = [
@@ -128,7 +127,7 @@ function AdminPage() {
         )}
 
         {tab === "users" && (
-          <Table headers={["Name", "Bio", "User ID", "Joined", "Role", "Admin"]}>
+          <Table headers={["Name", "Bio", "User ID", "Joined", "Role", "Admin", "Account"]}>
             {data.profiles?.map((p: any) => {
               const admin = isAdminUser(p.user_id);
               const isSelf = user?.id === p.user_id;
@@ -153,6 +152,11 @@ function AdminPage() {
                         Make admin
                       </Button>
                     )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <Button size="sm" variant="destructive" disabled={isSelf} onClick={() => deleteAccount(p.user_id, p.display_name || "this user")}>
+                      Delete account
+                    </Button>
                   </td>
                 </tr>
               );

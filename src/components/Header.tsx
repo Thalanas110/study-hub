@@ -18,7 +18,7 @@ export function Header() {
         <nav className="flex items-center gap-2">
           {user ? (
             <>
-              <Link to="/groups" className="rounded-full px-4 py-2 text-sm font-medium text-foreground/80 hover:text-foreground">Browse</Link>
+              <Link to="/groups" className="rounded-full px-4 py-2 text-sm font-medium text-foreground/80 hover:text-foreground">My groups</Link>
               <Link to="/groups/new" className="rounded-full px-4 py-2 text-sm font-medium text-foreground/80 hover:text-foreground">Host a group</Link>
               {isAdmin && (
                 <Link to="/admin" className="flex items-center gap-1.5 rounded-full bg-primary/10 px-4 py-2 text-sm font-medium text-primary hover:bg-primary/20">

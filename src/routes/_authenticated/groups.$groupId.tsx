@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { useIsAdmin } from "@/lib/useIsAdmin";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,21 +18,24 @@ export const Route = createFileRoute("/_authenticated/groups/$groupId")({
 });
 
 type Profile = { user_id: string; display_name: string };
+type GroupTab = "notes" | "quizzes" | "chat" | "members";
 
 function GroupPage() {
   const { groupId } = Route.useParams();
   const { user } = useAuth();
+  const { isAdmin } = useIsAdmin();
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const [tab, setTab] = useState<GroupTab>("notes");
 
-  const { data: group, isLoading } = useQuery({
+  const { data: group, isLoading, isError } = useQuery({
     queryKey: ["group", groupId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("study_groups")
         .select("*")
         .eq("id", groupId)
-        .single();
+        .maybeSingle();
       if (error) throw error;
       return data;
     },
@@ -39,6 +43,7 @@ function GroupPage() {
 
   const { data: members } = useQuery({
     queryKey: ["members", groupId],
+    enabled: !!group,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("group_members")
@@ -55,6 +60,9 @@ function GroupPage() {
 
   const isMember = !!members?.some((m) => m.user_id === user?.id);
   const isHost = group?.host_id === user?.id;
+  const canAccess = isMember || isHost || isAdmin;
+  const hostName = members?.find((m) => m.user_id === group?.host_id)?.display_name;
+  const createdOn = group?.created_at ? new Date(group.created_at).toLocaleDateString() : "";
 
   const join = async () => {
     if (!user) return;
@@ -71,7 +79,19 @@ function GroupPage() {
   };
 
   if (isLoading) return <main className="mx-auto max-w-6xl px-6 py-12 text-muted-foreground">Loading…</main>;
-  if (!group) return <main className="mx-auto max-w-6xl px-6 py-12">Group not found.</main>;
+  if (isError || !group) {
+    return (
+      <main className="mx-auto max-w-6xl px-6 py-12">
+        <div className="rounded-2xl border border-border/70 bg-card/80 p-8 shadow-soft">
+          <h1 className="font-display text-2xl font-semibold">Group not found</h1>
+          <p className="mt-2 text-sm text-muted-foreground">This group does not exist or you do not have access.</p>
+          <div className="mt-4">
+            <Button onClick={() => navigate({ to: "/groups" })}>Back to your groups</Button>
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">
@@ -80,15 +100,16 @@ function GroupPage() {
           <div>
             <span className="rounded-full bg-secondary px-3 py-1 text-xs font-medium">{group.topic}</span>
             <h1 className="mt-3 font-display text-4xl font-bold">{group.name}</h1>
-            <p className="mt-2 max-w-2xl text-muted-foreground">{group.description}</p>
+            <p className="mt-2 max-w-2xl text-muted-foreground">{group.description || "No description yet."}</p>
+            <p className="mt-3 text-xs text-muted-foreground">Hosted by {hostName ?? "-"} · Created {createdOn || "-"}</p>
             <div className="mt-4 flex items-center gap-4 text-sm text-muted-foreground">
               <span className="inline-flex items-center gap-1.5"><Users className="h-4 w-4" /> {members?.length ?? 0} members</span>
               {isHost && <span className="inline-flex items-center gap-1.5 text-primary"><Crown className="h-4 w-4" /> You host this group</span>}
             </div>
           </div>
           <div className="flex gap-2">
-            {!isMember && <Button onClick={join}>Join group</Button>}
-            {isMember && !isHost && (
+            {!canAccess && <Button onClick={join}>Join group</Button>}
+            {canAccess && !isHost && !isAdmin && (
               <Button variant="outline" onClick={leave}><LogOut className="h-4 w-4" /> Leave</Button>
             )}
             <Link to="/groups" className="inline-flex items-center rounded-full border border-border bg-background px-4 py-2 text-sm">All groups</Link>
@@ -96,12 +117,46 @@ function GroupPage() {
         </div>
       </div>
 
-      {!isMember ? (
-        <div className="mt-8 rounded-2xl border border-dashed border-border/70 bg-card/40 p-12 text-center">
-          <p className="text-muted-foreground">Join this group to see notes, quizzes, and chat.</p>
+      {!canAccess ? (
+        <div className="mt-8 space-y-6">
+          <div className="rounded-2xl border border-border/70 bg-card/80 p-6 shadow-soft">
+            <h2 className="font-display text-xl font-semibold">Join to unlock the group</h2>
+            <p className="mt-2 text-sm text-muted-foreground">Members can post notes, build quizzes, and chat in real time.</p>
+            <div className="mt-4 flex flex-wrap gap-3">
+              <Button onClick={join}>Join group</Button>
+              <Button variant="outline" onClick={() => navigate({ to: "/groups" })}>Browse other groups</Button>
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-3">
+            <PreviewCard icon={NotebookPen} title="Shared notes" description="Summaries, study plans, and key takeaways stay in one place." />
+            <PreviewCard icon={Brain} title="Group quizzes" description="Quick checks to see what stuck and what needs review." />
+            <PreviewCard icon={MessageCircle} title="Focused chat" description="Ask questions, coordinate sessions, and keep momentum." />
+          </div>
+
+          <div className="rounded-2xl border border-border/70 bg-card/80 p-6 shadow-soft">
+            <div className="flex items-center justify-between">
+              <h3 className="font-display text-lg font-semibold">Members</h3>
+              <span className="text-xs text-muted-foreground">{members?.length ?? 0} total</span>
+            </div>
+            <div className="mt-4">
+              {members?.length ? (
+                <MembersTab members={members} hostId={group.host_id} />
+              ) : (
+                <p className="text-sm text-muted-foreground">No members yet. Be the first to join.</p>
+              )}
+            </div>
+          </div>
         </div>
       ) : (
-        <Tabs defaultValue="notes" className="mt-8">
+        <div className="mt-8 space-y-6">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Button variant="outline" onClick={() => setTab("notes")}><NotebookPen className="h-4 w-4" /> Start a note</Button>
+            <Button variant="outline" onClick={() => setTab("quizzes")}><Brain className="h-4 w-4" /> Create a quiz</Button>
+            <Button variant="outline" onClick={() => setTab("chat")}><MessageCircle className="h-4 w-4" /> Open chat</Button>
+          </div>
+
+          <Tabs value={tab} onValueChange={(value) => setTab(value as GroupTab)}>
           <TabsList className="bg-card/70">
             <TabsTrigger value="notes"><NotebookPen className="mr-2 h-4 w-4" /> Notes</TabsTrigger>
             <TabsTrigger value="quizzes"><Brain className="mr-2 h-4 w-4" /> Quizzes</TabsTrigger>
@@ -121,7 +176,8 @@ function GroupPage() {
           <TabsContent value="members" className="mt-6">
             <MembersTab members={members ?? []} hostId={group.host_id} />
           </TabsContent>
-        </Tabs>
+          </Tabs>
+        </div>
       )}
     </main>
   );
@@ -195,7 +251,12 @@ function NotesTab({ groupId, userId }: { groupId: string; userId: string }) {
             <p className="mt-4 text-xs text-muted-foreground">By {profs?.[n.author_id] ?? "—"} · {new Date(n.created_at).toLocaleDateString()}</p>
           </article>
         ))}
-        {notes?.length === 0 && <p className="text-muted-foreground">No notes yet. Be the first to post one.</p>}
+        {notes?.length === 0 && (
+          <div className="rounded-2xl border border-dashed border-border/70 bg-card/40 p-6 text-sm text-muted-foreground md:col-span-2">
+            <p>No notes yet. Capture your first summary or study plan.</p>
+            <Button size="sm" className="mt-3" onClick={() => setOpen(true)}>Create first note</Button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -238,7 +299,12 @@ function QuizzesTab({ groupId, userId }: { groupId: string; userId: string }) {
             <Button className="mt-4" size="sm" onClick={() => setActiveQuiz(q.id)}>Take quiz</Button>
           </div>
         ))}
-        {quizzes?.length === 0 && <p className="text-muted-foreground">No quizzes yet. Create one to challenge your group.</p>}
+        {quizzes?.length === 0 && (
+          <div className="rounded-2xl border border-dashed border-border/70 bg-card/40 p-6 text-sm text-muted-foreground md:col-span-2">
+            <p>No quizzes yet. Add a quick check-in to keep everyone sharp.</p>
+            <Button size="sm" className="mt-3" onClick={() => setOpen(true)}>Create first quiz</Button>
+          </div>
+        )}
       </div>
 
       {activeQuiz && <QuizPlayer quizId={activeQuiz} userId={userId} onClose={() => setActiveQuiz(null)} />}
@@ -419,21 +485,45 @@ function ChatTab({ groupId, userId, members }: { groupId: string; userId: string
 function MembersTab({ members, hostId }: { members: any[]; hostId: string }) {
   return (
     <ul className="grid gap-3 md:grid-cols-2">
-      {members.map((m) => (
-        <li key={m.user_id} className="flex items-center justify-between rounded-xl border border-border/70 bg-card/80 p-4 shadow-soft">
-          <div className="flex items-center gap-3">
-            <div className="grid h-10 w-10 place-items-center rounded-full bg-primary/15 font-display font-semibold text-primary">
-              {m.display_name?.[0]?.toUpperCase() ?? "?"}
-            </div>
-            <div>
-              <p className="font-medium">{m.display_name}</p>
-              <p className="text-xs text-muted-foreground">Joined {new Date(m.joined_at).toLocaleDateString()}</p>
-            </div>
-          </div>
-          {m.user_id === hostId && <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-1 text-xs font-medium text-primary"><Crown className="h-3 w-3" /> Host</span>}
+      {members.length === 0 ? (
+        <li className="rounded-xl border border-dashed border-border/70 bg-card/40 p-4 text-sm text-muted-foreground">
+          No members yet.
         </li>
-      ))}
+      ) : (
+        members.map((m) => (
+          <li key={m.user_id} className="flex items-center justify-between rounded-xl border border-border/70 bg-card/80 p-4 shadow-soft">
+            <div className="flex items-center gap-3">
+              <div className="grid h-10 w-10 place-items-center rounded-full bg-primary/15 font-display font-semibold text-primary">
+                {m.display_name?.[0]?.toUpperCase() ?? "?"}
+              </div>
+              <div>
+                <p className="font-medium">{m.display_name}</p>
+                <p className="text-xs text-muted-foreground">Joined {new Date(m.joined_at).toLocaleDateString()}</p>
+              </div>
+            </div>
+            {m.user_id === hostId && <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-1 text-xs font-medium text-primary"><Crown className="h-3 w-3" /> Host</span>}
+          </li>
+        ))
+      )}
     </ul>
+  );
+}
+
+function PreviewCard({
+  icon: Icon,
+  title,
+  description,
+}: {
+  icon: React.ElementType;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-border/70 bg-card/80 p-6 shadow-soft">
+      <div className="grid h-10 w-10 place-items-center rounded-xl bg-secondary text-primary"><Icon className="h-5 w-5" /></div>
+      <h3 className="mt-4 font-display text-lg font-semibold">{title}</h3>
+      <p className="mt-2 text-sm text-muted-foreground">{description}</p>
+    </div>
   );
 }
 
