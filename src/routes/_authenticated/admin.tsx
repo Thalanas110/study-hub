@@ -1,0 +1,243 @@
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useIsAdmin } from "@/lib/useIsAdmin";
+import { useAuth } from "@/lib/auth";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { ShieldCheck, Users, BookOpen, FileText, Brain, MessageSquare, Trash2 } from "lucide-react";
+
+export const Route = createFileRoute("/_authenticated/admin")({
+  head: () => ({ meta: [{ title: "Admin — Studyhive" }] }),
+  component: AdminPage,
+});
+
+type Tab = "overview" | "users" | "groups" | "notes" | "quizzes" | "messages";
+
+function AdminPage() {
+  const { isAdmin, loading } = useIsAdmin();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [tab, setTab] = useState<Tab>("overview");
+  const [data, setData] = useState<any>({});
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => { if (!loading && !isAdmin) navigate({ to: "/groups" }); }, [loading, isAdmin, navigate]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    (async () => {
+      const [profiles, roles, groups, members, notes, quizzes, questions, attempts, messages] = await Promise.all([
+        supabase.from("profiles").select("*").order("created_at", { ascending: false }),
+        supabase.from("user_roles").select("user_id, role"),
+        supabase.from("study_groups").select("*").order("created_at", { ascending: false }),
+        supabase.from("group_members").select("*"),
+        supabase.from("notes").select("*").order("created_at", { ascending: false }),
+        supabase.from("quizzes").select("*").order("created_at", { ascending: false }),
+        supabase.from("quiz_questions").select("id, quiz_id"),
+        supabase.from("quiz_attempts").select("*").order("completed_at", { ascending: false }),
+        supabase.from("messages").select("*").order("created_at", { ascending: false }).limit(200),
+      ]);
+      setData({
+        profiles: profiles.data ?? [],
+        roles: roles.data ?? [],
+        groups: groups.data ?? [],
+        members: members.data ?? [],
+        notes: notes.data ?? [],
+        quizzes: quizzes.data ?? [],
+        questions: questions.data ?? [],
+        attempts: attempts.data ?? [],
+        messages: messages.data ?? [],
+      });
+    })();
+  }, [isAdmin, refreshKey]);
+
+  if (loading || !isAdmin) return <div className="p-10 text-muted-foreground">Loading admin…</div>;
+
+  const nameFor = (uid: string) => data.profiles?.find((p: any) => p.user_id === uid)?.display_name ?? uid.slice(0, 8);
+  const groupName = (gid: string) => data.groups?.find((g: any) => g.id === gid)?.name ?? gid.slice(0, 8);
+  const isAdminUser = (uid: string) => data.roles?.some((r: any) => r.user_id === uid && r.role === "admin");
+
+  const del = async (table: string, id: string) => {
+    if (!confirm("Delete this record?")) return;
+    const { error } = await supabase.from(table as any).delete().eq("id", id);
+    if (error) toast.error(error.message);
+    else { toast.success("Deleted"); setRefreshKey((k) => k + 1); }
+  };
+
+  const grantAdmin = async (uid: string) => {
+    if (!confirm("Grant admin role to this user?")) return;
+    const { error } = await supabase.from("user_roles").insert({ user_id: uid, role: "admin" });
+    if (error) toast.error(error.message);
+    else { toast.success("Admin role granted"); setRefreshKey((k) => k + 1); }
+  };
+
+  const revokeAdmin = async (uid: string) => {
+    if (!confirm("Revoke admin role from this user?")) return;
+    const { error } = await supabase.from("user_roles").delete().eq("user_id", uid).eq("role", "admin");
+    if (error) toast.error(error.message);
+    else { toast.success("Admin role revoked"); setRefreshKey((k) => k + 1); }
+  };
+
+  const stats = [
+    { label: "Users", value: data.profiles?.length ?? 0, icon: Users },
+    { label: "Groups", value: data.groups?.length ?? 0, icon: BookOpen },
+    { label: "Notes", value: data.notes?.length ?? 0, icon: FileText },
+    { label: "Quizzes", value: data.quizzes?.length ?? 0, icon: Brain },
+    { label: "Messages", value: data.messages?.length ?? 0, icon: MessageSquare },
+    { label: "Attempts", value: data.attempts?.length ?? 0, icon: ShieldCheck },
+  ];
+
+  const tabs: { id: Tab; label: string }[] = [
+    { id: "overview", label: "Overview" },
+    { id: "users", label: "Users" },
+    { id: "groups", label: "Groups" },
+    { id: "notes", label: "Notes" },
+    { id: "quizzes", label: "Quizzes" },
+    { id: "messages", label: "Messages" },
+  ];
+
+  return (
+    <div className="mx-auto max-w-6xl px-6 py-10">
+      <div className="flex items-center gap-3">
+        <span className="grid h-10 w-10 place-items-center rounded-xl bg-primary text-primary-foreground"><ShieldCheck className="h-5 w-5" /></span>
+        <div>
+          <h1 className="font-display text-3xl font-bold">Admin console</h1>
+          <p className="text-sm text-muted-foreground">Full visibility across the study hub.</p>
+        </div>
+      </div>
+
+      <div className="mt-6 flex flex-wrap gap-2 border-b border-border/60">
+        {tabs.map((t) => (
+          <button key={t.id} onClick={() => setTab(t.id)} className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition ${tab === t.id ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-6">
+        {tab === "overview" && (
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+            {stats.map((s) => (
+              <div key={s.label} className="rounded-2xl border border-border/70 bg-card/70 p-5">
+                <div className="flex items-center gap-2 text-muted-foreground"><s.icon className="h-4 w-4" /><span className="text-xs uppercase tracking-wide">{s.label}</span></div>
+                <p className="mt-2 font-display text-3xl font-bold">{s.value}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {tab === "users" && (
+          <Table headers={["Name", "Bio", "User ID", "Joined", "Role", "Admin"]}>
+            {data.profiles?.map((p: any) => {
+              const admin = isAdminUser(p.user_id);
+              const isSelf = user?.id === p.user_id;
+              return (
+                <tr key={p.id} className="border-t border-border/50">
+                  <td className="px-4 py-3 font-medium">{p.display_name}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{p.bio || "-"}</td>
+                  <td className="px-4 py-3"><code className="text-xs">{p.user_id.slice(0, 8)}</code></td>
+                  <td className="px-4 py-3 text-sm text-muted-foreground">{new Date(p.created_at).toLocaleDateString()}</td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${admin ? "bg-primary/10 text-primary" : "bg-secondary text-muted-foreground"}`}>
+                      {admin ? "Admin" : "User"}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    {admin ? (
+                      <Button size="sm" variant="ghost" disabled={isSelf} onClick={() => revokeAdmin(p.user_id)}>
+                        Remove admin
+                      </Button>
+                    ) : (
+                      <Button size="sm" disabled={isSelf} onClick={() => grantAdmin(p.user_id)}>
+                        Make admin
+                      </Button>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </Table>
+        )}
+
+        {tab === "groups" && (
+          <Table headers={["Name", "Topic", "Host", "Members", "Created", ""]}>
+            {data.groups?.map((g: any) => {
+              const count = data.members?.filter((m: any) => m.group_id === g.id).length ?? 0;
+              return (
+                <tr key={g.id} className="border-t border-border/50">
+                  <td className="px-4 py-3 font-medium"><Link to="/groups/$groupId" params={{ groupId: g.id }} className="hover:underline">{g.name}</Link></td>
+                  <td className="px-4 py-3 text-sm">{g.topic}</td>
+                  <td className="px-4 py-3 text-sm">{nameFor(g.host_id)}</td>
+                  <td className="px-4 py-3 text-sm">{count}</td>
+                  <td className="px-4 py-3 text-sm text-muted-foreground">{new Date(g.created_at).toLocaleDateString()}</td>
+                  <td className="px-4 py-3"><Button size="sm" variant="ghost" onClick={() => del("study_groups", g.id)}><Trash2 className="h-4 w-4" /></Button></td>
+                </tr>
+              );
+            })}
+          </Table>
+        )}
+
+        {tab === "notes" && (
+          <Table headers={["Title", "Group", "Author", "Updated", ""]}>
+            {data.notes?.map((n: any) => (
+              <tr key={n.id} className="border-t border-border/50">
+                <td className="px-4 py-3 font-medium">{n.title}</td>
+                <td className="px-4 py-3 text-sm">{groupName(n.group_id)}</td>
+                <td className="px-4 py-3 text-sm">{nameFor(n.author_id)}</td>
+                <td className="px-4 py-3 text-sm text-muted-foreground">{new Date(n.updated_at).toLocaleDateString()}</td>
+                <td className="px-4 py-3"><Button size="sm" variant="ghost" onClick={() => del("notes", n.id)}><Trash2 className="h-4 w-4" /></Button></td>
+              </tr>
+            ))}
+          </Table>
+        )}
+
+        {tab === "quizzes" && (
+          <Table headers={["Title", "Group", "Author", "Questions", "Attempts", ""]}>
+            {data.quizzes?.map((q: any) => {
+              const qc = data.questions?.filter((x: any) => x.quiz_id === q.id).length ?? 0;
+              const ac = data.attempts?.filter((a: any) => a.quiz_id === q.id).length ?? 0;
+              return (
+                <tr key={q.id} className="border-t border-border/50">
+                  <td className="px-4 py-3 font-medium">{q.title}</td>
+                  <td className="px-4 py-3 text-sm">{groupName(q.group_id)}</td>
+                  <td className="px-4 py-3 text-sm">{nameFor(q.author_id)}</td>
+                  <td className="px-4 py-3 text-sm">{qc}</td>
+                  <td className="px-4 py-3 text-sm">{ac}</td>
+                  <td className="px-4 py-3"><Button size="sm" variant="ghost" onClick={() => del("quizzes", q.id)}><Trash2 className="h-4 w-4" /></Button></td>
+                </tr>
+              );
+            })}
+          </Table>
+        )}
+
+        {tab === "messages" && (
+          <Table headers={["Group", "Author", "Message", "Sent", ""]}>
+            {data.messages?.map((m: any) => (
+              <tr key={m.id} className="border-t border-border/50">
+                <td className="px-4 py-3 text-sm">{groupName(m.group_id)}</td>
+                <td className="px-4 py-3 text-sm">{nameFor(m.user_id)}</td>
+                <td className="px-4 py-3 max-w-md truncate">{m.content}</td>
+                <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">{new Date(m.created_at).toLocaleString()}</td>
+                <td className="px-4 py-3"><Button size="sm" variant="ghost" onClick={() => del("messages", m.id)}><Trash2 className="h-4 w-4" /></Button></td>
+              </tr>
+            ))}
+          </Table>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Table({ headers, children }: { headers: string[]; children: React.ReactNode }) {
+  return (
+    <div className="overflow-x-auto rounded-2xl border border-border/70 bg-card/70">
+      <table className="w-full text-left">
+        <thead className="bg-secondary/40">
+          <tr>{headers.map((h) => <th key={h} className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{h}</th>)}</tr>
+        </thead>
+        <tbody>{children}</tbody>
+      </table>
+    </div>
+  );
+}
