@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
 import { BookOpenCheck, LogOut, ShieldCheck, Menu } from "lucide-react";
-import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 export function Header() {
@@ -35,8 +35,9 @@ export function Header() {
             <SheetContent side="right" className="w-72">
               <SheetHeader>
                 <SheetTitle>Menu</SheetTitle>
+                <SheetDescription className="sr-only">Navigation menu</SheetDescription>
               </SheetHeader>
-              <nav className="mt-6 flex flex-col gap-2">
+              <nav aria-label="Mobile navigation" className="mt-6 flex flex-col gap-2">
                 {user ? (
                   <>
                     <Link
@@ -89,7 +90,7 @@ export function Header() {
             </SheetContent>
           </Sheet>
         ) : (
-          <nav className="flex items-center gap-2">
+          <nav aria-label="Desktop navigation" className="flex items-center gap-2">
             {user ? (
               <>
                 <Link
