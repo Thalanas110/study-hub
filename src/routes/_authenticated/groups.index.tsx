@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { Users, Plus, Crown } from "lucide-react";
+import { LoadingScreen } from "@/components/LoadingScreen";
 
 export const Route = createFileRoute("/_authenticated/groups/")({
   head: () => ({ meta: [{ title: "Your groups — Studyhive" }] }),
@@ -44,7 +45,7 @@ function GroupsIndex() {
       </div>
 
       {isLoading ? (
-        <p className="mt-12 text-muted-foreground">Loading…</p>
+        <LoadingScreen />
       ) : (
         <div className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
           {groups?.map((g: any) => {

@@ -13,9 +13,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Crown, Users, Plus, Send, Trash2, NotebookPen, Brain, MessageCircle, LogOut } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
+import { LoadingScreen } from "@/components/LoadingScreen";
 
 export const Route = createFileRoute("/_authenticated/groups/$groupId")({
   component: GroupPage,
@@ -87,7 +86,7 @@ function GroupPage() {
     else { toast.success("Left the group."); qc.invalidateQueries({ queryKey: ["members", groupId] }); }
   };
 
-  if (isLoading) return <main className="mx-auto max-w-6xl px-6 py-12 text-muted-foreground">Loading…</main>;
+  if (isLoading) return <LoadingScreen />;
   if (isError || !group) {
     return (
       <main className="mx-auto max-w-6xl px-6 py-12">

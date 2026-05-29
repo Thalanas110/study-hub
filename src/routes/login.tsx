@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { BookOpenCheck } from "lucide-react";
+import { BookOpenCheck, Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Sign in — Studyhive" }] }),
@@ -74,6 +74,7 @@ function LoginPage() {
           </div>
 
           <Button type="submit" className="w-full" disabled={busy}>
+            {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             {busy ? "Working…" : mode === "signin" ? "Sign in" : "Create account"}
           </Button>
 

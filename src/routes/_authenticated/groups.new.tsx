@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/groups/new")({
   head: () => ({ meta: [{ title: "Host a study group — Studyhive" }] }),
@@ -56,7 +57,10 @@ function NewGroup() {
               <Label htmlFor="desc">Description</Label>
               <Textarea id="desc" value={description} onChange={(e) => setDescription(e.target.value)} rows={4} placeholder="What will you study together? When do you meet?" maxLength={500} />
             </div>
-            <Button type="submit" disabled={busy} className="w-full">{busy ? "Creating…" : "Create group"}</Button>
+            <Button type="submit" disabled={busy} className="w-full">
+              {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              {busy ? "Creating…" : "Create group"}
+            </Button>
           </form>
         </div>
 

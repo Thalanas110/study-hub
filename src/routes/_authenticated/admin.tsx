@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { ShieldCheck, Users, BookOpen, FileText, Brain, Trash2, LayoutDashboard } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { LoadingScreen } from "@/components/LoadingScreen";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({ meta: [{ title: "Admin — Studyhive" }] }),
@@ -51,7 +52,7 @@ function AdminPage() {
     })();
   }, [isAdmin, refreshKey]);
 
-  if (loading || !isAdmin) return <div className="p-10 text-muted-foreground">Loading admin…</div>;
+  if (loading || !isAdmin) return <LoadingScreen />;
 
   const nameFor = (uid: string) => data.profiles?.find((p: any) => p.user_id === uid)?.display_name ?? uid.slice(0, 8);
   const groupName = (gid: string) => data.groups?.find((g: any) => g.id === gid)?.name ?? gid.slice(0, 8);
