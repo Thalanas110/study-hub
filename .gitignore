@@ -37,4 +37,4 @@ demo-accounts.md
 # env
 .env
 .env.*.local
-
+.worktrees/
