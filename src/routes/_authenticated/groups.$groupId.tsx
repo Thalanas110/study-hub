@@ -4,13 +4,15 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useIsAdmin } from "@/lib/useIsAdmin";
+import { getMessageArchiveDownloadUrl } from "@/lib/api/message-archive.functions";
+import { formatArchiveExpiryLabel, formatArchiveWindowLabel, isArchiveVisible } from "@/lib/message-archives";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { Crown, Users, Plus, Send, Trash2, NotebookPen, Brain, MessageCircle, LogOut } from "lucide-react";
+import { Crown, Users, Plus, Send, Trash2, NotebookPen, Brain, MessageCircle, LogOut, Download } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
 import { toast } from "sonner";
@@ -454,6 +456,8 @@ function QuizPlayer({ quizId, userId, onClose }: { quizId: string; userId: strin
 function ChatTab({ groupId, userId, members }: { groupId: string; userId: string; members: any[] }) {
   const qc = useQueryClient();
   const [text, setText] = useState("");
+  const [archiveNow, setArchiveNow] = useState(() => Date.now());
+  const [downloadingArchiveId, setDownloadingArchiveId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const { data: messages } = useQuery({
@@ -469,6 +473,21 @@ function ChatTab({ groupId, userId, members }: { groupId: string; userId: string
     },
   });
 
+  const { data: archives } = useQuery({
+    queryKey: ["message-archives", groupId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("message_archives")
+        .select("id, file_name, window_start, window_end, expires_at, message_count, status")
+        .eq("group_id", groupId)
+        .eq("status", "ready")
+        .order("window_start", { ascending: false });
+
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
   useEffect(() => {
     const channel = supabase
       .channel(`messages:${groupId}`)
@@ -479,6 +498,14 @@ function ChatTab({ groupId, userId, members }: { groupId: string; userId: string
           qc.invalidateQueries({ queryKey: ["messages", groupId] });
         },
       )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "messages" },
+        () => {
+          qc.invalidateQueries({ queryKey: ["messages", groupId] });
+          qc.invalidateQueries({ queryKey: ["message-archives", groupId] });
+        },
+      )
       .subscribe();
 
     return () => {
@@ -487,10 +514,21 @@ function ChatTab({ groupId, userId, members }: { groupId: string; userId: string
   }, [groupId, qc]);
 
   const nameMap = new Map(members.map((m) => [m.user_id, m.display_name]));
+  const visibleArchives = (archives ?? []).filter((archive) => isArchiveVisible(archive.expires_at, new Date(archiveNow)));
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
   }, [messages]);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      setArchiveNow(Date.now());
+    }, 60_000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, []);
 
   const send = async () => {
     if (!text.trim()) return;
@@ -499,6 +537,26 @@ function ChatTab({ groupId, userId, members }: { groupId: string; userId: string
     const { error } = await supabase.from("messages").insert({ group_id: groupId, user_id: userId, content });
     if (error) toast.error(error.message);
     else qc.invalidateQueries({ queryKey: ["messages", groupId] });
+  };
+
+  const downloadArchive = async (archiveId: string) => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+
+    if (!accessToken) {
+      toast.error("Missing session. Please sign in again.");
+      return;
+    }
+
+    try {
+      setDownloadingArchiveId(archiveId);
+      const { signedUrl } = await getMessageArchiveDownloadUrl({ data: { accessToken, archiveId } });
+      window.open(signedUrl, "_blank", "noopener,noreferrer");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to download archive");
+    } finally {
+      setDownloadingArchiveId(null);
+    }
   };
 
   return (
@@ -522,6 +580,42 @@ function ChatTab({ groupId, userId, members }: { groupId: string; userId: string
         <Input value={text} onChange={(e) => setText(e.target.value)} placeholder="Message the group…" maxLength={1000} />
         <Button type="submit"><Send className="h-4 w-4" /></Button>
       </form>
+      <div className="border-t border-border/70 p-4 md:p-6">
+        <div>
+          <h3 className="font-display text-lg font-semibold">Recent archives</h3>
+          <p className="text-sm text-muted-foreground">Password-protected PDF exports remain available for 12 hours.</p>
+        </div>
+        <div className="mt-4 space-y-3">
+          {visibleArchives.length ? (
+            visibleArchives.map((archive) => (
+              <div
+                key={archive.id}
+                className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-background/70 p-4 md:flex-row md:items-center md:justify-between"
+              >
+                <div>
+                  <p className="font-medium">{formatArchiveWindowLabel(archive.window_start, archive.window_end)}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {archive.message_count} messages | {formatArchiveExpiryLabel(archive.expires_at)}
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={downloadingArchiveId === archive.id}
+                  onClick={() => downloadArchive(archive.id)}
+                >
+                  <Download className="h-4 w-4" />
+                  {downloadingArchiveId === archive.id ? "Preparing..." : "Download PDF"}
+                </Button>
+              </div>
+            ))
+          ) : (
+            <div className="rounded-2xl border border-dashed border-border/70 bg-card/40 p-4 text-sm text-muted-foreground">
+              No archive exports are available for this group right now.
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

@@ -78,6 +78,53 @@ export type Database = {
           },
         ]
       }
+      message_archives: {
+        Row: {
+          created_at: string
+          expires_at: string
+          file_name: string
+          group_id: string
+          id: string
+          message_count: number
+          status: string
+          storage_path: string
+          window_end: string
+          window_start: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          file_name: string
+          group_id: string
+          id?: string
+          message_count: number
+          status?: string
+          storage_path: string
+          window_end: string
+          window_start: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          file_name?: string
+          group_id?: string
+          id?: string
+          message_count?: number
+          status?: string
+          storage_path?: string
+          window_end?: string
+          window_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_archives_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "study_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notes: {
         Row: {
           author_id: string
