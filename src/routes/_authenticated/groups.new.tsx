@@ -37,10 +37,10 @@ function NewGroup() {
   };
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-12">
+    <main className="mx-auto max-w-5xl px-4 py-8 md:px-6 md:py-12">
       <div className="grid gap-10 md:grid-cols-[1.1fr_0.9fr]">
         <div>
-          <h1 className="font-display text-4xl font-bold">Host a study group</h1>
+          <h1 className="font-display text-3xl font-bold md:text-4xl">Host a study group</h1>
           <p className="mt-1 text-muted-foreground">You'll automatically be the host. Members can join freely.</p>
 
           <form onSubmit={submit} className="mt-8 space-y-5 rounded-2xl border border-border/70 bg-card/80 p-8 shadow-soft">

@@ -32,10 +32,10 @@ function GroupsIndex() {
   });
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-12">
+    <main className="mx-auto max-w-6xl px-4 py-8 md:px-6 md:py-12">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="font-display text-4xl font-bold">Your groups</h1>
+          <h1 className="font-display text-3xl font-bold md:text-4xl">Your groups</h1>
           <p className="mt-1 text-muted-foreground">Only groups you belong to appear here.</p>
         </div>
         <Link to="/groups/new" className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-soft">
