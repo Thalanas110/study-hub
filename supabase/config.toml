@@ -1,1 +1,4 @@
 project_id = "mkrulcrbjmcgjttkxkly"
+
+[functions.message-archive-maintenance]
+verify_jwt = false
