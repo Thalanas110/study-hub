@@ -1,3 +1,8 @@
+create extension if not exists pg_cron;
+create extension if not exists pg_net;
+create schema if not exists vault;
+create extension if not exists supabase_vault with schema vault;
+
 create table public.message_archives (
   id uuid primary key default gen_random_uuid(),
   group_id uuid not null references public.study_groups(id) on delete cascade,
@@ -39,16 +44,57 @@ insert into storage.buckets (id, name, public)
 values ('message-archives', 'message-archives', false)
 on conflict (id) do nothing;
 
--- Scheduling is configured outside this migration.
---
--- The original SQL job used Supabase Vault to inject the cron secret into a
--- pg_net HTTP call, but some environments do not ship the vault extension.
--- To keep this migration portable, create the scheduled invocation in the
--- Supabase Dashboard or your deployment automation instead.
---
--- Use these settings for the scheduled request:
---   endpoint: /functions/v1/message-archive-maintenance
---   method: POST
---   schedule: every 15 minutes
---   header: x-message-archive-cron-secret = <MESSAGE_ARCHIVE_CRON_SECRET>
---   body: {"trigger":"cron"}
+create or replace function public.invoke_message_archive_maintenance()
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  project_url text;
+  cron_secret text;
+begin
+  select decrypted_secret into project_url
+  from vault.decrypted_secrets
+  where name = 'project_url'
+  limit 1;
+
+  select decrypted_secret into cron_secret
+  from vault.decrypted_secrets
+  where name = 'message_archive_cron_secret'
+  limit 1;
+
+  if project_url is null or cron_secret is null then
+    raise exception 'Missing vault secret(s) for message archive maintenance';
+  end if;
+
+  perform net.http_post(
+    url := project_url || '/functions/v1/message-archive-maintenance',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'x-message-archive-cron-secret', cron_secret
+    ),
+    body := jsonb_build_object('trigger', 'cron')
+  );
+end;
+$$;
+
+do $$
+declare
+  existing_job_id bigint;
+begin
+  for existing_job_id in
+    select jobid
+    from cron.job
+    where jobname = 'message-archive-maintenance'
+  loop
+    perform cron.unschedule(existing_job_id);
+  end loop;
+end
+$$;
+
+select cron.schedule(
+  'message-archive-maintenance',
+  '*/15 * * * *',
+  $$select public.invoke_message_archive_maintenance();$$
+);
