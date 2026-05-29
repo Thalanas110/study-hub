@@ -100,13 +100,13 @@ function GroupPage() {
   }
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-10">
+    <main className="mx-auto max-w-6xl px-4 py-6 md:px-6 md:py-10">
       <ConfirmDialog {...leaveDialogProps} />
-      <div className="rounded-3xl border border-border/70 bg-card/80 p-8 shadow-soft">
+      <div className="rounded-3xl border border-border/70 bg-card/80 p-4 md:p-8 shadow-soft">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <span className="rounded-full bg-secondary px-3 py-1 text-xs font-medium">{group.topic}</span>
-            <h1 className="mt-3 font-display text-4xl font-bold">{group.name}</h1>
+            <h1 className="mt-3 font-display text-3xl font-bold md:text-4xl">{group.name}</h1>
             <p className="mt-2 max-w-2xl text-muted-foreground">{group.description || "No description yet."}</p>
             <p className="mt-3 text-xs text-muted-foreground">Hosted by {hostName ?? "-"} · Created {createdOn || "-"}</p>
             <div className="mt-4 flex items-center gap-4 text-sm text-muted-foreground">
@@ -157,7 +157,7 @@ function GroupPage() {
         </div>
       ) : (
         <div className="mt-8 space-y-6">
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <Button variant="outline" onClick={() => setTab("notes")}><NotebookPen className="h-4 w-4" /> Start a note</Button>
             <Button variant="outline" onClick={() => setTab("quizzes")}><Brain className="h-4 w-4" /> Create a quiz</Button>
             <Button variant="outline" onClick={() => setTab("chat")}><MessageCircle className="h-4 w-4" /> Open chat</Button>
@@ -346,7 +346,7 @@ function QuizBuilder({ groupId, userId, onClose }: { groupId: string; userId: st
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="w-[calc(100vw-2rem)] max-w-2xl max-h-[85vh] overflow-y-auto p-4 md:p-6">
         <DialogHeader><DialogTitle>Create a quiz</DialogTitle></DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2"><Label>Title</Label><Input value={title} onChange={(e) => setTitle(e.target.value)} /></div>
@@ -399,7 +399,7 @@ function QuizPlayer({ quizId, userId, onClose }: { quizId: string; userId: strin
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="w-[calc(100vw-2rem)] max-w-2xl max-h-[85vh] overflow-y-auto p-4 md:p-6">
         <DialogHeader><DialogTitle>Quiz</DialogTitle></DialogHeader>
         {result ? (
           <div className="py-8 text-center">
@@ -469,7 +469,7 @@ function ChatTab({ groupId, userId, members }: { groupId: string; userId: string
 
   return (
     <div className="rounded-2xl border border-border/70 bg-card/80 shadow-soft">
-      <div ref={scrollRef} className="h-[480px] overflow-y-auto p-6 space-y-4">
+      <div ref={scrollRef} className="h-[50vh] md:h-[480px] overflow-y-auto p-4 md:p-6 space-y-4">
         {messages?.map((m) => {
           const mine = m.user_id === userId;
           return (
