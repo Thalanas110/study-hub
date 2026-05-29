@@ -15,6 +15,8 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
 import { toast } from "sonner";
 import { LoadingScreen } from "@/components/LoadingScreen";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 
 export const Route = createFileRoute("/_authenticated/groups/$groupId")({
   component: GroupPage,
