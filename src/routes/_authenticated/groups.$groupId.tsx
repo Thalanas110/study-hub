@@ -504,7 +504,7 @@ function MembersTab({ members, hostId }: { members: any[]; hostId: string }) {
         members.map((m) => (
           <li key={m.user_id} className="flex items-center justify-between rounded-xl border border-border/70 bg-card/80 p-4 shadow-soft">
             <div className="flex items-center gap-3">
-              <div className="grid h-10 w-10 place-items-center rounded-full bg-primary/15 font-display font-semibold text-primary">
+              <div className="grid h-8 w-8 md:h-10 md:w-10 place-items-center rounded-full bg-primary/15 font-display font-semibold text-primary">
                 {m.display_name?.[0]?.toUpperCase() ?? "?"}
               </div>
               <div>
