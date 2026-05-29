@@ -13,6 +13,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Crown, Users, Plus, Send, Trash2, NotebookPen, Brain, MessageCircle, LogOut } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/groups/$groupId")({
@@ -29,6 +31,7 @@ function GroupPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [tab, setTab] = useState<GroupTab>("notes");
+  const isMobile = useIsMobile();
 
   const { data: group, isLoading, isError } = useQuery({
     queryKey: ["group", groupId],
@@ -164,12 +167,26 @@ function GroupPage() {
           </div>
 
           <Tabs value={tab} onValueChange={(value) => setTab(value as GroupTab)}>
+          {isMobile ? (
+            <Select value={tab} onValueChange={(value) => setTab(value as GroupTab)}>
+              <SelectTrigger className="w-full bg-card/70">
+                <SelectValue placeholder="Select tab" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="notes"><span className="flex items-center gap-2"><NotebookPen className="h-4 w-4" /> Notes</span></SelectItem>
+                <SelectItem value="quizzes"><span className="flex items-center gap-2"><Brain className="h-4 w-4" /> Quizzes</span></SelectItem>
+                <SelectItem value="chat"><span className="flex items-center gap-2"><MessageCircle className="h-4 w-4" /> Chat</span></SelectItem>
+                <SelectItem value="members"><span className="flex items-center gap-2"><Users className="h-4 w-4" /> Members</span></SelectItem>
+              </SelectContent>
+            </Select>
+          ) : (
           <TabsList className="bg-card/70">
             <TabsTrigger value="notes"><NotebookPen className="mr-2 h-4 w-4" /> Notes</TabsTrigger>
             <TabsTrigger value="quizzes"><Brain className="mr-2 h-4 w-4" /> Quizzes</TabsTrigger>
             <TabsTrigger value="chat"><MessageCircle className="mr-2 h-4 w-4" /> Chat</TabsTrigger>
             <TabsTrigger value="members"><Users className="mr-2 h-4 w-4" /> Members</TabsTrigger>
           </TabsList>
+          )}
 
           <TabsContent value="notes" className="mt-6">
             <NotesTab groupId={groupId} userId={user!.id} />
