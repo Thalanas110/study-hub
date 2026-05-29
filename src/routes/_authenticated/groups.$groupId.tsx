@@ -467,8 +467,24 @@ function ChatTab({ groupId, userId, members }: { groupId: string; userId: string
       if (error) throw error;
       return data ?? [];
     },
-    refetchInterval: 4000,
   });
+
+  useEffect(() => {
+    const channel = supabase
+      .channel(`messages:${groupId}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "messages", filter: `group_id=eq.${groupId}` },
+        () => {
+          qc.invalidateQueries({ queryKey: ["messages", groupId] });
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [groupId, qc]);
 
   const nameMap = new Map(members.map((m) => [m.user_id, m.display_name]));
 
