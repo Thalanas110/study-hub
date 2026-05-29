@@ -11,6 +11,8 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Crown, Users, Plus, Send, Trash2, NotebookPen, Brain, MessageCircle, LogOut } from "lucide-react";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/groups/$groupId")({
@@ -64,6 +66,8 @@ function GroupPage() {
   const hostName = members?.find((m) => m.user_id === group?.host_id)?.display_name;
   const createdOn = group?.created_at ? new Date(group.created_at).toLocaleDateString() : "";
 
+  const { confirmAsync: confirmLeave, confirmDialogProps: leaveDialogProps } = useConfirmDialog();
+
   const join = async () => {
     if (!user) return;
     const { error } = await supabase.from("group_members").insert({ group_id: groupId, user_id: user.id, role: "member" });
@@ -73,6 +77,8 @@ function GroupPage() {
 
   const leave = async () => {
     if (!user) return;
+    const ok = await confirmLeave({ title: "Leave group", description: "Are you sure you want to leave this group? You can rejoin later.", actionLabel: "Leave" });
+    if (!ok) return;
     const { error } = await supabase.from("group_members").delete().eq("group_id", groupId).eq("user_id", user.id);
     if (error) toast.error(error.message);
     else { toast.success("Left the group."); qc.invalidateQueries({ queryKey: ["members", groupId] }); }
@@ -95,6 +101,7 @@ function GroupPage() {
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">
+      <ConfirmDialog {...leaveDialogProps} />
       <div className="rounded-3xl border border-border/70 bg-card/80 p-8 shadow-soft">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -189,6 +196,7 @@ function NotesTab({ groupId, userId }: { groupId: string; userId: string }) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const { confirmAsync: confirmDeleteNote, confirmDialogProps: deleteNoteDialogProps } = useConfirmDialog();
 
   const { data: notes } = useQuery({
     queryKey: ["notes", groupId],
@@ -216,6 +224,8 @@ function NotesTab({ groupId, userId }: { groupId: string; userId: string }) {
   };
 
   const del = async (id: string) => {
+    const ok = await confirmDeleteNote({ title: "Delete note", description: "This note will be permanently removed.", actionLabel: "Delete" });
+    if (!ok) return;
     const { error } = await supabase.from("notes").delete().eq("id", id);
     if (error) toast.error(error.message);
     else qc.invalidateQueries({ queryKey: ["notes", groupId] });
@@ -223,6 +233,7 @@ function NotesTab({ groupId, userId }: { groupId: string; userId: string }) {
 
   return (
     <div>
+      <ConfirmDialog {...deleteNoteDialogProps} />
       <div className="flex justify-between">
         <h2 className="font-display text-xl font-semibold">Shared notes</h2>
         <Dialog open={open} onOpenChange={setOpen}>
