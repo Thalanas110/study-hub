@@ -4,7 +4,7 @@ import React from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsAdmin } from "@/lib/useIsAdmin";
 import { useAuth } from "@/lib/auth";
-import { getAdminDashboardData } from "@/lib/api/admin.functions";
+import { getAdminDashboardData, adminDeleteGroup } from "@/lib/api/admin.functions";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
@@ -60,9 +60,24 @@ function AdminPage() {
   const del = async (table: string, id: string) => {
     const ok = await confirmAsync({ title: "Delete record", description: "This action cannot be undone.", actionLabel: "Delete" });
     if (!ok) return;
-    const { error } = await supabase.from(table as any).delete().eq("id", id);
-    if (error) toast.error(error.message);
-    else { toast.success("Deleted"); setRefreshKey((k) => k + 1); }
+
+    if (table === "study_groups") {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      if (!accessToken) { toast.error("Missing session."); return; }
+      try {
+        await adminDeleteGroup({ data: { accessToken, groupId: id } });
+        toast.success("Deleted");
+        setRefreshKey((k) => k + 1);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to delete group";
+        toast.error(message);
+      }
+    } else {
+      const { error } = await supabase.from(table as any).delete().eq("id", id);
+      if (error) toast.error(error.message);
+      else { toast.success("Deleted"); setRefreshKey((k) => k + 1); }
+    }
   };
 
   const grantAdmin = async (uid: string) => {

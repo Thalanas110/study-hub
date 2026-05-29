@@ -49,3 +49,26 @@ export const getAdminDashboardData = createServerFn({ method: "POST" })
       messages: messages.data ?? [],
     };
   });
+
+export const adminDeleteGroup = createServerFn({ method: "POST" })
+  .inputValidator(z.object({ accessToken: z.string().min(1), groupId: z.string().uuid() }))
+  .handler(async ({ data }) => {
+    const { accessToken, groupId } = data;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(accessToken);
+    if (userError || !userData?.user) throw new Error("Unauthorized");
+
+    const userId = userData.user.id;
+    const { data: roleRow, error: roleError } = await supabaseAdmin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .eq("role", "admin")
+      .maybeSingle();
+    if (roleError) throw new Error(roleError.message);
+    if (!roleRow) throw new Error("Forbidden");
+
+    const { error } = await supabaseAdmin.rpc("admin_delete_group", { _group_id: groupId });
+    if (error) throw new Error(error.message);
+  });
